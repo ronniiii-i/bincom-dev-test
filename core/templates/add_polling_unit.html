@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Add Polling Unit</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light p-4">
+<div class="container bg-white p-4 rounded shadow-sm max-w-lg">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Enter Results for New Polling Unit</h2>
+        <a href="{% url 'polling_unit_result' %}" class="btn btn-outline-secondary">Back to Results</a>
+    </div>
+
+    <form method="POST" class="mt-3">
+        {% csrf_token %}
+        
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label font-weight-bold">Local Government (LGA)</label>
+                <select id="lga-select" name="lga_id" class="form-select" required>
+                    <option value="">-- Select LGA --</option>
+                    {% for lga in lgas %}
+                        <option value="{{ lga.lga_id }}">{{ lga.lga_name|title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label font-weight-bold">Ward (Chained Select Box)</label>
+                <select id="ward-select" name="ward_id" class="form-select" required disabled>
+                    <option value="">-- Select LGA First --</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-2">
+            <div class="col-md-6">
+                <label class="form-label">Polling Unit Name</label>
+                <input type="text" name="polling_unit_name" class="form-control" placeholder="e.g. Town Hall" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Polling Unit Number</label>
+                <input type="text" name="polling_unit_number" class="form-control" placeholder="e.g. DT0101001" required>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <label class="form-label">Entered By</label>
+            <input type="text" name="entered_by" class="form-control" value="Officer 1" required>
+        </div>
+
+        <h4 class="mt-4">Enter Party Scores</h4>
+        <div class="row g-3 mt-1">
+            {% for party in parties %}
+                <div class="col-md-4">
+                    <label class="form-label font-weight-bold">{{ party.partyname }}</label>
+                    <input type="number" name="party_{{ party.partyid }}" class="form-control" value="0" min="0" required>
+                </div>
+            {% endfor %}
+        </div>
+
+        <button type="submit" class="btn btn-success mt-4 w-100">Save Polling Unit & Results</button>
+    </form>
+</div>
+
+<script>
+// Dynamic Chained Select Box logic for LGA -> Ward selection
+document.getElementById('lga-select').addEventListener('change', function() {
+    const lgaId = this.value;
+    const wardSelect = document.getElementById('ward-select');
+    
+    if (!lgaId) {
+        wardSelect.innerHTML = '<option value="">-- Select LGA First --</option>';
+        wardSelect.disabled = true;
+        return;
+    }
+
+    fetch(`/api/wards/${lgaId}/`)
+        .then(response => response.json())
+        .then(data => {
+            wardSelect.innerHTML = '<option value="">-- Select Ward --</option>';
+            data.forEach(ward => {
+                wardSelect.innerHTML += `<option value="${ward.ward_id}">${ward.ward_name}</option>`;
+            });
+            wardSelect.disabled = false;
+        });
+});
+</script>
+</body>
+</html>

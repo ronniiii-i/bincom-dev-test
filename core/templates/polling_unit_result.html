@@ -7,7 +7,13 @@
 </head>
 <body class="bg-light p-4">
 <div class="container bg-white p-4 rounded shadow-sm">
-    <h2>Individual Polling Unit Results</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2>Individual Polling Unit Results</h2>
+      <div>
+        <a href="{% url 'lga_summed_result' %}" class="btn btn-outline-primary me-2">LGA Summed Results</a>
+        <a href="{% url 'add_polling_unit' %}" class="btn btn-success">+ Add Polling Unit</a>
+      </div>
+    </div>
     
     <form method="GET" class="my-3 row g-3">
         <div class="col-md-8">

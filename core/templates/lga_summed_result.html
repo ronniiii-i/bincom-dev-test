@@ -11,8 +11,12 @@
     <div class="container bg-white p-4 rounded shadow-sm">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h2>Total Summed Results by LGA</h2>
-        <a href="{% url 'polling_unit_result' %}" class="btn btn-outline-secondary">Individual Polling Units</a>
+        <div>
+          <a href="{% url 'polling_unit_result' %}" class="btn btn-outline-secondary">Individual Polling Units</a>
+          <a href="{% url 'add_polling_unit' %}" class="btn btn-success">+ Add Polling Unit</a>
+        </div>
       </div>
+      
 
       <form method="GET" class="my-3 row g-3">
         <div class="col-md-6">

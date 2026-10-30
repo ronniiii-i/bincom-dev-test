@@ -1,6 +1,9 @@
 from django.shortcuts import render
 from django.db.models import Sum
-from .models import Lga, PollingUnit, AnnouncedPuResults
+from django.http import JsonResponse
+from django.shortcuts import redirect
+from django.utils import timezone
+from .models import Lga, PollingUnit, AnnouncedPuResults, Ward, Party
 
 def polling_unit_result(request):
     polling_units = PollingUnit.objects.filter(lga_id__gt=0).order_by('polling_unit_name')
@@ -32,15 +35,21 @@ def lga_summed_result(request):
     if selected_lga_id:
         selected_lga = Lga.objects.filter(lga_id=selected_lga_id).first()
         
-        pu_uniqueids = PollingUnit.objects.filter(
-            lga_id=selected_lga_id
-        ).values_list('uniqueid', flat=True)
+        pu_uniqueids = list(
+            PollingUnit.objects.filter(lga_id=selected_lga_id)
+            .values_list('uniqueid', flat=True)
+        )
         
-        party_totals = AnnouncedPuResults.objects.filter(
-            polling_unit_uniqueid__in=[str(uid) for uid in pu_uniqueids]
-        ).values('party_abbreviation').annotate(
-            total_score=Sum('party_score')
-        ).order_by('party_abbreviation')
+        str_pu_ids = [str(uid) for uid in pu_uniqueids if uid]
+        
+        party_totals = (
+            AnnouncedPuResults.objects.filter(
+                polling_unit_uniqueid__in=str_pu_ids
+            )
+            .values('party_abbreviation')
+            .annotate(total_score=Sum('party_score'))
+            .order_by('party_abbreviation')
+        )
         
         grand_total = sum(item['total_score'] for item in party_totals if item['total_score'])
 
@@ -51,3 +60,55 @@ def lga_summed_result(request):
         'grand_total': grand_total,
     }
     return render(request, 'lga_summed_result.html', context)
+ 
+
+def get_wards(request, lga_id):
+    wards = list(Ward.objects.filter(lga_id=lga_id).values('ward_id', 'ward_name'))
+    return JsonResponse(wards, safe=False)
+
+def add_polling_unit(request):
+    if request.method == 'POST':
+        lga_id = request.POST.get('lga_id')
+        ward_id = request.POST.get('ward_id')
+        pu_name = request.POST.get('polling_unit_name')
+        pu_number = request.POST.get('polling_unit_number')
+        entered_by = request.POST.get('entered_by', 'Admin')
+        
+    
+        new_pu = PollingUnit.objects.create(
+            polling_unit_name=pu_name,
+            polling_unit_number=pu_number,
+            lga_id=int(lga_id),
+            ward_id=int(ward_id),
+            polling_unit_id=0,
+            entered_by_user=entered_by,
+            date_entered=timezone.now(),
+            user_ip_address=request.META.get('REMOTE_ADDR', '127.0.0.1')
+        )
+        
+    
+        parties = Party.objects.all()
+        for party in parties:
+            score = request.POST.get(f'party_{party.partyid}', 0)
+            if score:
+            
+                party_abbr = str(party.partyid).strip()[:4]
+                
+                AnnouncedPuResults.objects.create(
+                    polling_unit_uniqueid=str(new_pu.uniqueid),
+                    party_abbreviation=party_abbr,
+                    party_score=int(score),
+                    entered_by_user=entered_by,
+                    date_entered=timezone.now(),
+                    user_ip_address=request.META.get('REMOTE_ADDR', '127.0.0.1')
+                )
+                
+        return redirect('polling_unit_result')
+
+    lgas = Lga.objects.filter(state_id=25).order_by('lga_name')
+    parties = Party.objects.all()
+    
+    return render(request, 'add_polling_unit.html', {
+        'lgas': lgas,
+        'parties': parties
+    })
