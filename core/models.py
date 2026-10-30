@@ -31,7 +31,7 @@ class PollingUnit(models.Model):
     polling_unit_id = models.IntegerField()
     ward_id = models.IntegerField()
     lga_id = models.IntegerField()
-    uniquepar_id = models.IntegerField(null=True, blank=True)
+    uniquewardid = models.IntegerField(null=True, blank=True)
     polling_unit_number = models.CharField(max_length=50, null=True, blank=True)
     polling_unit_name = models.CharField(max_length=50, null=True, blank=True)
     polling_unit_description = models.TextField(null=True, blank=True)

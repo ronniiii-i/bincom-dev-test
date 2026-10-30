@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Polling Unit Results</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light p-4">
+<div class="container bg-white p-4 rounded shadow-sm">
+    <h2>Individual Polling Unit Results</h2>
+    
+    <form method="GET" class="my-3 row g-3">
+        <div class="col-md-8">
+            <select name="pu_id" class="form-select" onchange="this.form.submit()">
+                <option value="">-- Select a Polling Unit --</option>
+                {% for pu in polling_units %}
+                    <option value="{{ pu.uniqueid }}" {% if selected_pu and selected_pu.uniqueid == pu.uniqueid %}selected{% endif %}>
+                        {{ pu.polling_unit_name|title }} {% if pu.polling_unit_number %}({{ pu.polling_unit_number }}){% endif %}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+
+    {% if selected_pu %}
+        <h4 class="mt-4">Results for: {{ selected_pu.polling_unit_name|title }}</h4>
+        <table class="table table-bordered table-striped mt-3">
+            <thead class="table-dark">
+                <tr>
+                    <th>Party</th>
+                    <th>Score</th>
+                    <th>Entered By</th>
+                    <th>Date Entered</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in results %}
+                    <tr>
+                        <td><strong>{{ row.party_abbreviation }}</strong></td>
+                        <td>{{ row.party_score }}</td>
+                        <td>{{ row.entered_by_user }}</td>
+                        <td>{{ row.date_entered }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-muted">No results recorded for this polling unit.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</div>
+</body>
+</html>
