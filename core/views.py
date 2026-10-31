@@ -1,9 +1,8 @@
-from django.shortcuts import render
-from django.db.models import Sum
+from django.shortcuts import render, redirect
+from django.db.models import Sum, Max
 from django.http import JsonResponse
-from django.shortcuts import redirect
 from django.utils import timezone
-from .models import Lga, PollingUnit, AnnouncedPuResults, Ward, Party
+from .models import Lga, Ward, PollingUnit, AnnouncedPuResults, Party
 
 def polling_unit_result(request):
     polling_units = PollingUnit.objects.filter(lga_id__gt=0).order_by('polling_unit_name')
@@ -12,9 +11,10 @@ def polling_unit_result(request):
     results = []
     selected_pu = None
     
-    if selected_pu_id:
-        selected_pu = PollingUnit.objects.filter(uniqueid=selected_pu_id).first()
-        results = AnnouncedPuResults.objects.filter(polling_unit_uniqueid=selected_pu_id)
+    if selected_pu_id and selected_pu_id.isdigit():
+        selected_pu = PollingUnit.objects.filter(uniqueid=int(selected_pu_id)).first()
+        if selected_pu:
+            results = AnnouncedPuResults.objects.filter(polling_unit_uniqueid=str(selected_pu.uniqueid))
         
     context = {
         'polling_units': polling_units,
@@ -32,15 +32,15 @@ def lga_summed_result(request):
     selected_lga = None
     grand_total = 0
     
-    if selected_lga_id:
-        selected_lga = Lga.objects.filter(lga_id=selected_lga_id).first()
+    if selected_lga_id and selected_lga_id.isdigit():
+        selected_lga = Lga.objects.filter(lga_id=int(selected_lga_id)).first()
         
         pu_uniqueids = list(
-            PollingUnit.objects.filter(lga_id=selected_lga_id)
+            PollingUnit.objects.filter(lga_id=int(selected_lga_id))
             .values_list('uniqueid', flat=True)
         )
         
-        str_pu_ids = [str(uid) for uid in pu_uniqueids if uid]
+        str_pu_ids = [str(uid) for uid in pu_uniqueids if uid is not None]
         
         party_totals = (
             AnnouncedPuResults.objects.filter(
@@ -60,11 +60,12 @@ def lga_summed_result(request):
         'grand_total': grand_total,
     }
     return render(request, 'lga_summed_result.html', context)
- 
+
 
 def get_wards(request, lga_id):
     wards = list(Ward.objects.filter(lga_id=lga_id).values('ward_id', 'ward_name'))
     return JsonResponse(wards, safe=False)
+
 
 def add_polling_unit(request):
     if request.method == 'POST':
@@ -74,8 +75,11 @@ def add_polling_unit(request):
         pu_number = request.POST.get('polling_unit_number')
         entered_by = request.POST.get('entered_by', 'Admin')
         
-    
+        max_pu = PollingUnit.objects.aggregate(Max('uniqueid'))['uniqueid__max'] or 0
+        next_uniqueid = max_pu + 1
+        
         new_pu = PollingUnit.objects.create(
+            uniqueid=next_uniqueid,
             polling_unit_name=pu_name,
             polling_unit_number=pu_number,
             lga_id=int(lga_id),
@@ -86,12 +90,10 @@ def add_polling_unit(request):
             user_ip_address=request.META.get('REMOTE_ADDR', '127.0.0.1')
         )
         
-    
         parties = Party.objects.all()
         for party in parties:
             score = request.POST.get(f'party_{party.partyid}', 0)
             if score:
-            
                 party_abbr = str(party.partyid).strip()[:4]
                 
                 AnnouncedPuResults.objects.create(
